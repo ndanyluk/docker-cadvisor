@@ -1,0 +1,71 @@
+sudo: required
+
+language: generic
+
+services:
+  - docker
+
+env:
+  global:
+    - qemu_version=5.0.0-2
+    - target_version=0.36.0
+    - target_platform=linux
+  matrix:
+    - target_arch=amd64 qemu_arch=x86_64 bin_arch=amd64
+    - target_arch=arm qemu_arch=arm bin_arch=armv6
+    - target_arch=arm qemu_arch=arm bin_arch=armv7
+    - target_arch=arm64 qemu_arch=aarch64 bin_arch=arm64v8
+
+before_install:
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+  - sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+  - sudo apt-get update
+  - sudo apt-get -y install docker-ce
+  - mkdir $HOME/.docker
+  - 'echo "{" > $HOME/.docker/config.json'
+  - 'echo "  \"experimental\": \"enabled\"" >> $HOME/.docker/config.json'
+  - 'echo "}" >> $HOME/.docker/config.json'
+  - sudo service docker restart
+  - mkdir bin
+  - docker run --rm --privileged multiarch/qemu-user-static:register
+
+install:
+  - curl -sLO https://github.com/multiarch/qemu-user-static/releases/download/v${qemu_version}/qemu-${qemu_arch}-static.tar.gz;
+  - tar -xzvf qemu-${qemu_arch}-static.tar.gz;
+  - docker build --build-arg VERSION=${target_version} --build-arg GOARCH=${target_arch} --build-arg CONTAINER_ARCH=${bin_arch} --build-arg QEMU_ARCH=${qemu_arch} -t ndanyluk/cadvisor-${target_arch}:$TRAVIS_BUILD_NUMBER .
+
+script:
+  - sudo docker run -d --name cadvisor ndanyluk/cadvisor-${target_arch}:$TRAVIS_BUILD_NUMBER
+  - sleep 5
+  - sudo docker ps | grep -q cadvisor
+
+after_success:
+  - if [ -z "$DOCKER_USER" ]; then
+      echo "PR build, skipping Docker Hub push";
+    elif [ "$TRAVIS_BRANCH" != "master" ]; then
+      echo "Branch build, skipping Docker Hub push";
+    else
+      docker login -u "$DOCKER_USER" -p "$DOCKER_PASS";
+      docker tag ndanyluk/grafana-${target_arch}:$TRAVIS_BUILD_NUMBER ndanyluk/grafana-${target_arch}:${target_version};
+      docker tag ndanyluk/grafana-${target_arch}:$TRAVIS_BUILD_NUMBER ndanyluk/grafana-${target_arch}:latest;
+      docker push ndanyluk/grafana-${target_arch}:${target_version};
+      docker push ndanyluk/grafana-${target_arch}:latest;
+    fi
+
+jobs:
+  include:
+    - stage: deploy
+      install: skip
+      script: skip
+      after_success:
+        - if [ -z "$DOCKER_USER" ]; then
+            echo "PR build, skipping Docker Hub push";
+          elif [ "$TRAVIS_BRANCH" != "master" ]; then
+            echo "Branch build, skipping Docker Hub push";
+          else
+            docker login -u "$DOCKER_USER" -p "$DOCKER_PASS";
+            docker manifest create ndanyluk/grafana:${target_version} ndanyluk/grafana-armv7:${target_version} ndanyluk/grafana-arm64:${target_version} ndanyluk/grafana-amd64:${target_version};
+            docker manifest create ndanyluk/grafana:latest ndanyluk/grafana-armv7:latest ndanyluk/grafana-amd64:latest ndanyluk/grafana-arm64:latest;
+            docker manifest push ndanyluk/grafana:${target_version};
+            docker manifest push ndanyluk/grafana:latest;
+          fi
