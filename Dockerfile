@@ -1,8 +1,10 @@
+ARG ALPINE_VERSION=3.12
+ARG CONTAINER_ARCH=linux/amd64
+
 FROM golang:1.15-buster as builder
 
 ARG VERSION
 ARG GOARCH
-ARG QEMU_ARCH
 
 RUN apt-get update && \
 	apt-get install make git bash gcc && \
@@ -16,9 +18,9 @@ RUN git fetch --tags && \
 	make build GOARCH=$GOARCH && \
 	cp ./cadvisor /
 
-ARG CONTAINER
+FROM --platform=$CONTAINER_ARCH alpine:${ALPINE_VERSION}
 
-FROM $CONTAINER
+ARG QEMU_ARCH
 
 COPY qemu-${QEMU_ARCH}-static /usr/bin
 

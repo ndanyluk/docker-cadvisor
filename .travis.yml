@@ -12,10 +12,10 @@ env:
     - alpine_version=3.12
     - target_platform=linux
   matrix:
-    - target_arch=amd64 qemu_arch=x86_64 bin_arch=amd64
-    - target_arch=arm qemu_arch=arm bin_arch=armv6
-    - target_arch=arm qemu_arch=arm bin_arch=armv7
-    - target_arch=arm64 qemu_arch=aarch64 bin_arch=arm64v8
+    - target_arch=amd64 alpine_arch=linux/amd64 qemu_arch=x86_64 bin_arch=amd64
+    - target_arch=armv6 alpine_arch=linux/arm/v6 qemu_arch=arm bin_arch=arm
+    - target_arch=armv7 alpine_arch=linux/arm/v7 qemu_arch=arm bin_arch=arm
+    - target_arch=arm64 alpine_arch=linux/arm64/v8 qemu_arch=aarch64 bin_arch=arm64
 
 before_install:
   - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
@@ -33,7 +33,7 @@ before_install:
 install:
   - curl -sLO https://github.com/multiarch/qemu-user-static/releases/download/v${qemu_version}/qemu-${qemu_arch}-static.tar.gz;
   - tar -xzvf qemu-${qemu_arch}-static.tar.gz;
-  - docker build --build-arg VERSION=v${target_version} --build-arg GOARCH=${target_arch} --build-arg CONTAINER=${bin_arch}/alpine:${alpine_version} --build-arg QEMU_ARCH=${qemu_arch} -t ndanyluk/cadvisor-${target_arch}:$TRAVIS_BUILD_NUMBER .
+  - docker build --build-arg VERSION=v${target_version} --build-arg GOARCH=${bin_arch} --build-arg CONTAINER_ARCH=${alpine_arch} --build-arg ALPINE_VERSION=${alpine_version} --build-arg QEMU_ARCH=${qemu_arch} -t ndanyluk/cadvisor-${target_arch}:$TRAVIS_BUILD_NUMBER .
 
 script:
   - sudo docker run -d --name cadvisor ndanyluk/cadvisor-${target_arch}:$TRAVIS_BUILD_NUMBER
