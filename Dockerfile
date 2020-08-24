@@ -1,7 +1,8 @@
 FROM golang:1.15-buster as builder
+
 ARG VERSION
 ARG GOARCH
-ARG CONTAINER_ARCH
+ARG CONTAINER
 ARG QEMU_ARCH
 
 RUN apt-get update && \
@@ -16,7 +17,7 @@ RUN git fetch --tags && \
 	make build GOARCH=$GOARCH && \
 	cp ./cadvisor /
 
-FROM $CONTAINER_ARCH/alpine:3.12
+FROM $CONTAINER
 
 COPY qemu-${QEMU_ARCH}-static /usr/bin
 
