@@ -28,8 +28,8 @@ RUN apk --no-cache add libc6-compat device-mapper findutils && \
     apk --no-cache add zfs || true && \
     apk --no-cache add thin-provisioning-tools --repository http://dl-3.alpinelinux.org/alpine/edge/main/ && \
     echo 'hosts: files mdns4_minimal [NOTFOUND=return] dns mdns4' >> /etc/nsswitch.conf && \
-    rm -rf /var/cache/apk/* && \
-    rm -rf /usr/bin/qemu-${QEMU_ARCH}-static
+    rm -rf /var/cache/apk/*
+    #rm -rf /usr/bin/qemu-${QEMU_ARCH}-static
 
 COPY --from=builder /cadvisor /usr/bin/cadvisor
 
